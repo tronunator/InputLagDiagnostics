@@ -1,0 +1,24 @@
+{
+	"FileVersion": 3,
+	"Version": 1,
+	"VersionName": "1.0",
+	"FriendlyName": "Input Lag Diagnostics",
+	"Description": "Provides real-time input lag measurement for mouse inputs, displaying hardware-to-execution latency on the HUD",
+	"Category": "UnrealTournament.Mutator",
+	"CreatedBy": "UT Community",
+	"CreatedByURL": "",
+	"DocsURL": "",
+	"MarketplaceURL": "",
+	"SupportURL": "",
+	"EnabledByDefault": false,
+	"CanContainContent": false,
+	"IsBetaVersion": false,
+	"Installed": false,
+	"Modules": [
+		{
+			"Name": "InputLagDiagnostics",
+			"Type": "Runtime",
+			"LoadingPhase": "Default"
+		}
+	]
+}

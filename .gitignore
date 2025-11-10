@@ -1,0 +1,22 @@
+# Compiled binaries
+Binaries/
+*.dll
+*.pdb
+*.exp
+*.lib
+*.so
+*.dylib
+
+# Build intermediates
+Intermediate/
+*.modules
+
+# Visual Studio files
+.vs/
+*.user
+*.suo
+*.sln.docstates
+
+# Unreal Editor generated
+Saved/
+DerivedDataCache/
