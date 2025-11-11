@@ -9,7 +9,12 @@ AInputLagPlayerController::AInputLagPlayerController(const FObjectInitializer& O
 	InputFrameNumber = 0;
 	LastTrackedInputKey = EKeys::Invalid;
 	bPendingInputMeasurement = false;
-	InputLagHistory.Reserve(MaxInputLagSamples);
+	HistoryIndex = 0;
+	SmoothedInputLag = 0.0f;
+	RawInputLag = 0.0f;
+	
+	// Pre-allocate circular buffer
+	InputLagHistory.AddZeroed(MaxInputLagSamples);
 }
 
 void AInputLagPlayerController::ShowInputLag()
@@ -70,26 +75,97 @@ void AInputLagPlayerController::RecordInputExecution(FKey Key)
 
 float AInputLagPlayerController::GetAverageInputLag() const
 {
-	if (InputLagHistory.Num() == 0)
-	{
-		return 0.0f;
-	}
-
 	float Sum = 0.0f;
+	int32 ValidSamples = 0;
+	
 	for (float Lag : InputLagHistory)
 	{
-		Sum += Lag;
+		if (Lag > 0.0f) // Only count valid samples (buffer may not be full yet)
+		{
+			Sum += Lag;
+			ValidSamples++;
+		}
 	}
-	return Sum / InputLagHistory.Num();
+	
+	return (ValidSamples > 0) ? (Sum / ValidSamples) : 0.0f;
 }
 
 float AInputLagPlayerController::GetLastInputLag() const
 {
-	if (InputLagHistory.Num() == 0)
+	// Get the most recent sample (before current index)
+	int32 LastIndex = (HistoryIndex - 1 + MaxInputLagSamples) % MaxInputLagSamples;
+	return InputLagHistory[LastIndex];
+}
+
+float AInputLagPlayerController::GetMinInputLag() const
+{
+	float MinLag = FLT_MAX;
+	bool bFoundValid = false;
+	
+	for (float Lag : InputLagHistory)
+	{
+		if (Lag > 0.0f) // Only consider valid samples
+		{
+			MinLag = FMath::Min(MinLag, Lag);
+			bFoundValid = true;
+		}
+	}
+	
+	return bFoundValid ? MinLag : 0.0f;
+}
+
+float AInputLagPlayerController::GetMaxInputLag() const
+{
+	float MaxLag = 0.0f;
+	
+	for (float Lag : InputLagHistory)
+	{
+		if (Lag > 0.0f) // Only consider valid samples
+		{
+			MaxLag = FMath::Max(MaxLag, Lag);
+		}
+	}
+	
+	return MaxLag;
+}
+
+float AInputLagPlayerController::Get95thPercentileInputLag() const
+{
+	// Collect valid samples
+	TArray<float> ValidSamples;
+	ValidSamples.Reserve(MaxInputLagSamples);
+	
+	for (float Lag : InputLagHistory)
+	{
+		if (Lag > 0.0f)
+		{
+			ValidSamples.Add(Lag);
+		}
+	}
+	
+	if (ValidSamples.Num() == 0)
 	{
 		return 0.0f;
 	}
-	return InputLagHistory.Last();
+	
+	// Sort samples
+	ValidSamples.Sort();
+	
+	// Get 95th percentile (95% of samples are below this value)
+	int32 Index = FMath::CeilToInt(ValidSamples.Num() * 0.95f) - 1;
+	Index = FMath::Clamp(Index, 0, ValidSamples.Num() - 1);
+	
+	return ValidSamples[Index];
+}
+
+float AInputLagPlayerController::GetSmoothedInputLag() const
+{
+	return SmoothedInputLag;
+}
+
+float AInputLagPlayerController::GetRawInputLag() const
+{
+	return RawInputLag;
 }
 
 bool AInputLagPlayerController::InputKey(FKey Key, EInputEvent EventType, float AmountDepressed, bool bGamepad)
@@ -147,12 +223,23 @@ void AInputLagPlayerController::MeasureInputLagEndOfFrame()
 	// Sanity check - if lag is impossibly high (> 1 second), skip it
 	if (InputLagMs > 0.0f && InputLagMs < 1000.0f)
 	{
-		// Add to history
-		if (InputLagHistory.Num() >= MaxInputLagSamples)
+		// Store raw value
+		RawInputLag = InputLagMs;
+		
+		// Calculate smoothed value (exponential moving average: 90% old + 10% new)
+		// Similar to stat unit's smoothing
+		if (SmoothedInputLag == 0.0f)
 		{
-			InputLagHistory.RemoveAt(0);
+			SmoothedInputLag = InputLagMs; // First sample
 		}
-		InputLagHistory.Add(InputLagMs);
+		else
+		{
+			SmoothedInputLag = 0.9f * SmoothedInputLag + 0.1f * InputLagMs;
+		}
+		
+		// Add to circular buffer (no array shifting needed!)
+		InputLagHistory[HistoryIndex] = InputLagMs;
+		HistoryIndex = (HistoryIndex + 1) % MaxInputLagSamples;
 	}
 
 	// Reset

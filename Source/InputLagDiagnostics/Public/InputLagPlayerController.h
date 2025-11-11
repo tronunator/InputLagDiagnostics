@@ -32,8 +32,17 @@ public:
 	// Whether we're waiting to measure input lag
 	bool bPendingInputMeasurement;
 
-	// History of input lag measurements (in milliseconds)
+	// History of input lag measurements (in milliseconds) - circular buffer
 	TArray<float> InputLagHistory;
+
+	// Current index in the circular buffer
+	int32 HistoryIndex;
+
+	// Smoothed input lag value (exponential moving average)
+	float SmoothedInputLag;
+
+	// Raw (unsmoothed) input lag from last measurement
+	float RawInputLag;
 
 	// Maximum number of samples to keep
 	static const int32 MaxInputLagSamples = 200;
@@ -55,6 +64,26 @@ public:
 	// Get the last recorded input lag
 	UFUNCTION(BlueprintCallable, Category = "Input Lag")
 	float GetLastInputLag() const;
+
+	// Get the minimum input lag from history
+	UFUNCTION(BlueprintCallable, Category = "Input Lag")
+	float GetMinInputLag() const;
+
+	// Get the maximum input lag from history
+	UFUNCTION(BlueprintCallable, Category = "Input Lag")
+	float GetMaxInputLag() const;
+
+	// Get the 95th percentile input lag (95% of samples are below this value)
+	UFUNCTION(BlueprintCallable, Category = "Input Lag")
+	float Get95thPercentileInputLag() const;
+
+	// Get the smoothed input lag (exponential moving average)
+	UFUNCTION(BlueprintCallable, Category = "Input Lag")
+	float GetSmoothedInputLag() const;
+
+	// Get the raw (unsmoothed) input lag
+	UFUNCTION(BlueprintCallable, Category = "Input Lag")
+	float GetRawInputLag() const;
 
 	// Override input functions to track timestamps
 	virtual bool InputKey(FKey Key, EInputEvent EventType, float AmountDepressed, bool bGamepad) override;
