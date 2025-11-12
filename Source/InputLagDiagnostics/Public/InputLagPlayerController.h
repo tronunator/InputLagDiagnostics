@@ -2,8 +2,7 @@
 
 #include "Core.h"
 #include "Engine.h"
-#include "UnrealTournament.h"
-#include "UTPlayerController.h"
+#include "GameFramework/PlayerController.h"
 #include "InputLagPlayerController.generated.h"
 
 /**
@@ -11,7 +10,7 @@
  * Tracks the time from input arrival to execution
  */
 UCLASS()
-class AInputLagPlayerController : public AUTPlayerController
+class AInputLagPlayerController : public APlayerController
 {
 	GENERATED_UCLASS_BODY()
 
